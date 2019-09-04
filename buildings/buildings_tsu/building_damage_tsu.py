@@ -42,8 +42,6 @@ converted from Matlab to python by Dylan R. Sanderson
 Feb. 2019
 
 """
-
-
 import os
 import sys
 import numpy as np
@@ -67,8 +65,8 @@ class building_damage_tsu():
 	# ~~~ user input up top ~~~
 	def user_input_vals(self):
 		self.n_sims = 10000			# number of simulations
-		self.retrofit_vals = 1		# originally set to 4
-		self.write_h5 = True 		# True/False: write all output to h5 file
+		self.retrofit_vals = 4		# originally set to 4
+		self.write_h5 = False 		# True/False: write all output to h5 file
 
 	def setup(self):
 		self.user_input_vals()

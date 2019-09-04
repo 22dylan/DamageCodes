@@ -87,9 +87,6 @@ class transportationdamage_earthquake():
 				if self.plot_tf == True:
 					self.plot_results()
 
-		# self.reorg_gis_data()		# note: drs, added this
-
-
 	# ~~~ secondary methods ~~~
 	#  ~~ from self.setup() ~~
 	def load_mat_files(self):
@@ -135,8 +132,8 @@ class transportationdamage_earthquake():
 		self.time_to_90p_conn_fire_hosp = np.zeros(self.fast_vals*self.retrofit_vals*RT_size*self.n_sims).reshape(self.fast_vals, self.retrofit_vals, RT_size, self.n_sims)
 		self.time_to_100p_conn_fire_hosp = np.zeros(self.fast_vals*self.retrofit_vals*RT_size*self.n_sims).reshape(self.fast_vals, self.retrofit_vals, RT_size, self.n_sims)
 	
-		self.frac_tax_lots_conn_write = np.zeros((RT_size, len(self.tax_lot_type), self.n_sims))	# note: drs, added this
-	
+		self.link_failure = np.zeros((RT_size, self.n_links, self.n_sims))
+
 	#  ~~ from self.run() ~~ 
 	def print_runinfo(self):
 		print('n_sims: {}' .format(self.n_sims))
@@ -216,6 +213,7 @@ class transportationdamage_earthquake():
 		if len(self.closed_roads_ID) > 0:
 			G_post = DCH.delete_edges(G_post, self.start_node, self.end_node, self.closed_roads_ID)
 		self.bins = DCH.conn_comp(G_post, self.n_nodes)
+		self.link_failure[self.r, self.closed_roads_ID, self.i] = 1
 
 	def conn_analysis2(self):
 		self.closed_roads[(self.rep_time_roads <= self.unique_reptime_roads[self.t])] = False
@@ -234,11 +232,6 @@ class transportationdamage_earthquake():
 
 		if init_loop == True:
 			self.frac_tax_lots_conn_fire_hosp[self.fast, self.retrofit, self.r, self.i] = (np.sum(tax_lots_conn_fire_hosp*(self.tax_lot_type>0))/np.sum((self.tax_lot_type>0)))*np.ones(self.time_size)
-		
-			# note: drs, added this
-			if (self.retrofit == 0) and (self.fast == 0):
-				self.frac_tax_lots_conn_write[self.r,:, self.i] = tax_lots_conn_fire_hosp*1
-			# ~~~	
 
 		else:
 			self.frac_tax_lots_conn_fire_hosp[self.fast, self.retrofit, self.r, self.i, self.unique_reptime_roads[self.t]:] = np.sum(tax_lots_conn_fire_hosp*(self.tax_lot_type>0))/np.sum((self.tax_lot_type>0))
@@ -266,26 +259,6 @@ class transportationdamage_earthquake():
 			plt.plot(temp_avg, linewidth = 0.75, label= str(rt))
 		plt.legend()
 		plt.grid()
-
-	def reorg_gis_data(self):
-		"""
-		note: drs, added this
-		"""
-		gis_data = np.zeros((len(self.tax_lot_type), len(self.RT) + 1))
-		gis_data[:,0] = np.arange(0, len(self.tax_lot_type), 1)
-		header = np.empty(len(self.RT) + 1, dtype = object)
-		for r in range(len(self.RT)):
-			data_temp = self.frac_tax_lots_conn_write[r]
-			avg = np.average(data_temp, axis = 1)
-			gis_data[:,r+1] = avg
-			header[r+1] = 'eq_' + str(self.RT[r])
-
-		header[0] = 'ID'
-		header = list(header)
-		header = ', '.join(header)
-
-		csvwrt(gis_data, header, 'transp_conn_eq')
-
 
 	# ~~~ tertiary and beyond methods ~~~
 	def readmat(self, matfile, key, dtype, idx_0 = False):

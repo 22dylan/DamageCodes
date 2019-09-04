@@ -37,7 +37,7 @@ class building_damage_tsu_eq():
 		self.n_sims = 10000			# number of simulations
 		self.retrofit_vals = 1		# originally set to 4
 
-		self.write_h5 = True
+		self.write_h5 = False
 		self.write_csv = False
 		self.outfiles = ['habitable', 'Data']
 
@@ -59,8 +59,8 @@ class building_damage_tsu_eq():
 				for self.i in range(self.n_sims):
 					self.building_eval()
 				print('elapsed time: {}' .format(time.time() - timer))
-		self.reorg_gis_data()
-		
+			
+
 	# ~~~ secondary methods ~~~
 	#  ~~ from self.setup() ~~
 	def load_h5_files(self):
@@ -102,6 +102,10 @@ class building_damage_tsu_eq():
 		self.rep_cost_buildings_tsu = np.zeros(RT_size*len(self.Data[:,0])*self.n_sims).reshape(RT_size, len(self.Data[:,0]), self.n_sims)
 		self.rep_cost_buildings = np.zeros(RT_size*len(self.Data[:,0])*self.n_sims).reshape(RT_size, len(self.Data[:,0]), self.n_sims)
 
+		self.DS_Save_eq = np.zeros((RT_size, len(self.Data[:,0]), self.n_sims))
+		self.DS_Save_tsu = np.zeros((RT_size, len(self.Data[:,0]), self.n_sims))
+		self.DS_Save = np.zeros((RT_size, len(self.Data[:,0]), self.n_sims))
+
 	#  ~~ from self.run() ~~ 
 	def print_runinfo(self):
 		print('n_sims: {}' .format(self.n_sims))
@@ -129,8 +133,12 @@ class building_damage_tsu_eq():
 	def building_eval(self):
 		DS_tsu = 5-np.sum(np.heaviside(np.random.uniform(low=0, high=1, size=(self.n_lots,1)) - self.Tsu_DamageState[self.retrofit, self.r], 0.5), axis = 1) 	# damage state
 		DS_eq = 5-np.sum(np.heaviside(np.random.uniform(low=0, high=1, size=(self.n_lots,1)) - self.GS_DamageState[self.retrofit, self.r], 0.5), axis = 1) 	# damage state
-
 		DS = np.max(np.column_stack([DS_eq, DS_tsu]), axis = 1) 
+
+		self.DS_Save_eq[self.r, :, self.i] = DS_eq
+		self.DS_Save_tsu[self.r, :, self.i] = DS_tsu
+		self.DS_Save[self.r, :, self.i] = DS
+
 		ind = np.array([(DS_eq==4) & (DS_tsu==4)][0])
 		DS[ind] = 5
 		ind_count1 = np.sum(ind)
@@ -165,44 +173,16 @@ class building_damage_tsu_eq():
 		self.frac_habitable_building[0, self.retrofit, self.r, self.i] = np.mean(self.habitable[self.cases])
 		self.frac_damaged_building[0, self.retrofit, self.r, self.i] = np.mean(DS[self.cases]>2)
 
-		# note: drs, the below is new
 		self.rep_cost_buildings_eq[self.r, :, self.i] = rep_costs_buildings_eq[:]
 		self.rep_cost_buildings_tsu[self.r, :, self.i] = rep_costs_buildings_tsu[:]
 		self.rep_cost_buildings[self.r, :, self.i] = rep_costs_buildings[:]
 		
-	def reorg_gis_data(self):
-		gis_data = np.zeros((len(self.Data[:,0]), len(self.RT)*3 + 1))
-		gis_data[:,0] = self.Data[:,2]
-		header = np.empty(len(self.RT)*3 + 1, dtype = object)
-		for r in range(len(self.RT)):
-			data_temp_eq = self.rep_cost_buildings_eq[r]
-			data_temp_tsu = self.rep_cost_buildings_tsu[r]
-			data_temp = self.rep_cost_buildings[r]
-			
-			avg_eq = np.average(data_temp_eq, axis = 1)
-			avg_tsu = np.average(data_temp_tsu, axis = 1)
-			avg = np.average(data_temp, axis = 1)
-
-			gis_data[:,r+1] = avg_eq
-			gis_data[:,r+9] = avg_tsu
-			gis_data[:,r+17] = avg
-
-			header[r+1] = "eq_" + str(self.RT[r])
-			header[r+9] = 'tsu_' + str(self.RT[r])
-			header[r+17] = 'tsu_eq_' + str(self.RT[r])
-
-		header[0] = 'ID'
-		header = list(header)
-		header = ', '.join(header)
-
-		csvwrt(gis_data, header, 'building_damage')
+	
 
 	# ~~~ tertiary and beyond methods ~~~
 	def readh5(self, file, key):
 		f = h5py.File(file, 'r')
 		return np.array(f[key])
-
-
 
 
 bdte = building_damage_tsu_eq()

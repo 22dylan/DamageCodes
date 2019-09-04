@@ -107,7 +107,6 @@ class water_damage_tsu():
 
 						self.wps_eval()
 	
-		self.reorg_gis_data()		# note: drs, added this
 
 	# ~~~ secondary methods ~~~
 	#  ~~ from self.setup() ~~
@@ -219,7 +218,7 @@ class water_damage_tsu():
 		self.rep_time_wps = np.zeros(self.n_wps*self.fast_vals*self.retrofit_vals*self.n_sims*RT_size).reshape(self.n_wps, self.fast_vals, self.retrofit_vals, self.n_sims, RT_size)	# note: drs, "5" may be an issue. look into generalizing
 		self.rep_cost_wps = np.zeros(self.n_wps*self.fast_vals*self.retrofit_vals*self.n_sims*RT_size).reshape(self.n_wps, self.fast_vals, self.retrofit_vals, self.n_sims, RT_size)
 
-		self.frac_tax_lots_conn_write = np.zeros((RT_size, len(self.tax_lot_type), self.n_sims))	# note: drs, added this
+		self.link_failure = np.zeros((RT_size, self.n_links, self.n_sims))
 
 	#  ~~ from self.run() ~~
 	def print_runinfo(self):
@@ -345,6 +344,7 @@ class water_damage_tsu():
 		if len(self.closed_pipes) > 0:
 			G_post = DCH.delete_edges(G_post, self.start_node, self.end_node, self.closed_pipes_ID)
 		self.bins = np.array(DCH.conn_comp(G_post, self.n_nodes))
+		self.link_failure[self.r, self.closed_pipes_ID, self.i] = 1
 
 		# post-earthquake connectivity analysis          
 		self.wpump_bins = self.bins[self.wpump_node]	# there can be a maximum of three such bins  
@@ -367,11 +367,6 @@ class water_damage_tsu():
 		self.tax_lots_conn_wpump = np.logical_and(self.nodes_conn_wpump[self.tax_lot_start_node], self.nodes_conn_wpump[self.tax_lot_end_node])		# tax lots connected to the water pumps
 		self.frac_tax_lots_conn_wpump[self.fast, self.r, self.i, :] = np.sum(self.tax_lots_conn_wpump*self.logical_tax_lot_type)/np.sum(self.logical_tax_lot_type)	# fraction of tax lots that are buildingd and are connected to the water pumps  
 	
-		# note: drs, added this
-		if (self.fast == 0):
-			self.frac_tax_lots_conn_write[self.r,:, self.i] = self.tax_lots_conn_wpump*1
-		# ~~~
-
 
 	def conn_analysis2(self):
 		self.closed_pipes[self.rep_time_pipes<=self.unique_rep_times_pipes[self.t]] = 0
@@ -592,26 +587,6 @@ class water_damage_tsu():
 
 		self.rep_time_wps[self.np, self.fast, self.retrofit, :, self.r] = np.array([self.rep_time_wps_gen[self.fast, self.retrofit, int(i), int(obj)-1] for i, obj in enumerate(self.DS_wps[self.np, self.fast, self.retrofit, :, self.r])])
 		self.rep_cost_wps[self.np, self.fast, self.retrofit, :, self.r] = self.damage_ratio_wps[self.DS_wps[self.np, self.fast, self.retrofit, :, self.r].astype(int)-1]*150
-
-
-	def reorg_gis_data(self):
-		"""
-		note: drs, added this
-		"""
-		gis_data = np.zeros((len(self.tax_lot_type), len(self.RT) + 1))
-		gis_data[:,0] = np.arange(0, len(self.tax_lot_type), 1)
-		header = np.empty(len(self.RT) + 1, dtype = object)
-		for r in range(len(self.RT)):
-			data_temp = self.frac_tax_lots_conn_write[r]
-			avg = np.average(data_temp, axis = 1)
-			gis_data[:,r+1] = avg
-			header[r+1] = 'tsu_' + str(self.RT[r])
-
-		header[0] = 'ID'
-		header = list(header)
-		header = ', '.join(header)
-
-		csvwrt(gis_data, header, 'water_conn_tsu')
 
 
 	# ~~~ tertiary and beyond methods ~~~

@@ -62,8 +62,8 @@ class EPN_damage_eq():
 						self.conn_analysis1()
 						self.time_eval()
 						self.substation_conn(init_loop = True)
+					
 						self.unique_reptime_poles = np.unique(self.rep_time_poles[self.rep_time_poles != 0]).astype(int)
-
 						for self.t in range(len(self.unique_reptime_poles)):
 							self.conn_analysis2()
 							self.time_eval()
@@ -90,7 +90,6 @@ class EPN_damage_eq():
 				for self.r in range(len(self.RT)): 		#loop through return intervals
 					self.wtp_eval()
 
-		self.reorg_gis_data()
 
 	# ~~~ secondary methods ~~~
 	#  ~~ from self.setup() ~~
@@ -160,7 +159,8 @@ class EPN_damage_eq():
 		self.rep_cost_SS = np.zeros(self.fast_vals*self.retrofit_vals*self.n_sims*RT_size).reshape(self.fast_vals, self.retrofit_vals, self.n_sims, RT_size)
 		self.func_SS = np.zeros(self.fast_vals*self.retrofit_vals*self.n_sims*RT_size).reshape(self.fast_vals, self.retrofit_vals, self.n_sims, RT_size)
 
-		self.frac_tax_lots_conn_write = np.zeros((RT_size, len(self.tax_lot_type), self.n_sims))	# note: drs, added this
+		self.link_failure = np.zeros((RT_size, self.n_links, self.n_sims))
+		self.pole_failure = np.zeros((RT_size, len(self.pole_y_n), self.n_sims))
 
 
 	#  ~~ from self.run() ~~ 
@@ -218,6 +218,8 @@ class EPN_damage_eq():
 			G_post = DCH.delete_edge_rowcol(G_post, self.start_node, self.end_node, self.down_poles)
 		self.frac_closed_links[self.fast, self.retrofit, self.r, self.i, :] = G_post.ecount()/self.n_links
 		self.bins = np.array(DCH.conn_comp(G_post, self.n_nodes))
+		self.pole_failure[self.r, self.down_poles, self.i] = 1
+
 
 		# post-earthquake connectivity analysis
 		self.SS_bin = self.bins[self.SS_node]
@@ -259,11 +261,6 @@ class EPN_damage_eq():
 		if init_loop == True:
 			self.frac_tax_lots_conn_SS[self.fast, self.retrofit, self.r, self.i, :] = np.sum(tax_lots_conn_SS*(self.tax_lot_type>0))/np.sum(self.tax_lot_type>0)
 			
-			# note: drs, added this
-			if (self.retrofit == 0) and (self.fast == 0):
-				self.frac_tax_lots_conn_write[self.r,:, self.i] = tax_lots_conn_SS*1
-			# ~~~
-
 		elif init_loop == False:
 			self.frac_tax_lots_conn_SS[self.fast, self.retrofit, self.r, self.i, self.unique_reptime_poles[self.t]:] = np.sum(tax_lots_conn_SS*(self.tax_lot_type>0))/np.sum(self.tax_lot_type>0)
 			if (self.frac_tax_lots_conn_SS[self.fast, self.retrofit, self.r, self.i,  self.unique_reptime_poles[self.t]] > 0.9) & (self.frac_tax_lots_conn_SS[self.fast, self.retrofit, self.r, self.i,  self.unique_reptime_poles[self.t]-1] < 0.9):
@@ -329,25 +326,6 @@ class EPN_damage_eq():
 		self.rep_cost_SS[self.fast, self.retrofit, :, self.r] = self.substation_cost*self.damage_ratio_SS_eq[self.DS_SS[self.fast, self.retrofit, :, self.r].astype(int)-1]
 		self.func_SS[self.fast, self.retrofit, :, self.r] = self.DS_SS[self.fast, self.retrofit, :, self.r] <= 3
 
-
-	def reorg_gis_data(self):
-		"""
-		note: drs, added this
-		"""
-		gis_data = np.zeros((len(self.tax_lot_type), len(self.RT) + 1))
-		gis_data[:,0] = np.arange(0, len(self.tax_lot_type), 1)
-		header = np.empty(len(self.RT) + 1, dtype = object)
-		for r in range(len(self.RT)):
-			data_temp = self.frac_tax_lots_conn_write[r]
-			avg = np.average(data_temp, axis = 1)
-			gis_data[:,r+1] = avg
-			header[r+1] = 'tsu_eq_' + str(self.RT[r])
-
-		header[0] = 'ID'
-		header = list(header)
-		header = ', '.join(header)
-
-		csvwrt(gis_data, header, 'epn_conn_eq')
 
 
 	# ~~~ tertiary and beyond methods ~~~

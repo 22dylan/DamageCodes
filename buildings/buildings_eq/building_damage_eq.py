@@ -31,7 +31,7 @@
 % col 21-24 = Fragility_Structural_Low     (21=Slight, 22=Moderate, 23=Extensive, 24=Complete)
 % col 25-28 = Fragility_Structural_Moderate(25=Slight, 26=Moderate, 27=Extensive, 28=Complete)
 % col 29-32 = Fragility_Structural_High    (29=Slight, 30=Moderate, 31=Extensive, 32=Complete)
-% col 33-36 = Arrange the Damage State     (33=Slight, 34=Moderate, 35=Extensive, 36=Complete) 
+% col 33-36 = Arrange the Damage State     (33=Slight, 34=Moderate, 35=Extensive, 36=Complete)
 %(summation( P(DS>ds)* RMV )
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
